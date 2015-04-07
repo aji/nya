@@ -154,10 +154,13 @@ def get_video(track, on_complete):
     if not YOUTUBE_API_KEY():
         on_complete(None)
         return
-    get_json(youtube_url(u'search', part=u'snippet',
-                q=u'{} {}'.format(track.artist, track.name),
-                maxResults=1,
-                type=u'video'), x)
+    try:
+        get_json(youtube_url(u'search', part=u'snippet',
+                    q=u'{} {}'.format(track.artist, track.name),
+                    maxResults=1,
+                    type=u'video'), x)
+    except Exeception:
+        on_complete(None)
 
 def do_poll(u, on_complete):
     def request_completed(ok, tracks, u):
