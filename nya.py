@@ -289,19 +289,20 @@ def run_command(net, chan, args):
 def try_command(data, signal, signal_data):
     sig = weechat.info_get_hashtable('irc_message_parse', {
         'message': signal_data})
+    server = signal.split(',')[0]
     args = sig['arguments'].split(' :', 1)
     tail = ''
     if len(args) > 1:
         tail = args[1]
     args = args[0].split()
-    nick = weechat.info_get('irc_nick', '')
+    nick = weechat.info_get('irc_nick', server)
     tail = tail.lstrip()
     if not tail.startswith(nick):
         return weechat.WEECHAT_RC_OK
     data = tail.split()
     if len(data) < 2:
         return weechat.WEECHAT_RC_OK
-    run_command(signal.split(',')[0], sig['channel'], data[1:])
+    run_command(server, sig['channel'], data[1:])
     return weechat.WEECHAT_RC_OK
 
 weechat.register('nya', 'aji', '1.0', 'MIT', 'nya!', '', '')
