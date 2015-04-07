@@ -11,7 +11,7 @@ USERS = [
     'foxiepaws',
     ]
 
-BUFFER = 'interlinked,#music'
+BUFFER = 'interlinked,#nya'
 
 import weechat
 
@@ -105,10 +105,10 @@ class User(object):
 
 def get_tracks(u, on_complete):
     def x(d):
-        if 'recenttracks' not in d or 'track' not in d['recenttracks']:
+        if u'recenttracks' not in d or u'track' not in d[u'recenttracks']:
             on_complete(False, d, u)
         tracks = []
-        for t in d['recenttracks']['track']:
+        for t in d[u'recenttracks'][u'track']:
             tracks.append(Track(**t))
         on_complete(True, tracks, u)
     if not LASTFM_API_KEY():
@@ -120,12 +120,15 @@ def get_video(track, on_complete):
     def x(d):
         if 'kind' not in d or d['kind'] != 'youtube#searchListResponse':
             on_complete(None)
+            return
         first = d['items'][0]
         if 'kind' not in first or first['kind'] != 'youtube#searchResult':
             on_complete(None)
+            return
         vid = first['id']
         if 'kind' not in vid or vid['kind'] != 'youtube#video':
             on_complete(None)
+            return
         on_complete(vid['videoId'])
     if not YOUTUBE_API_KEY():
         on_complete(None)
@@ -143,20 +146,21 @@ def do_poll(u, on_complete):
             return
         i = -1
         for j, t in enumerate(tracks):
-            if u'nowplaying' in t.attrs and t.attrs['nowplaying'] == u'true':
+            if u'nowplaying' in t.attrs and t.attrs[u'nowplaying'] == u'true':
                 i = j
                 break
         if i == -1:
+            return
+        last_last_poll = u.last_poll
+        u.last_poll = time.time()
+        if last_last_poll is None:
+            u.last_track = tracks[i]
             return
         if u.last_track is not None:
             if u.last_track.name == tracks[i].name:
                 return
         weechat.prnt(MUSIC, '{}: {}'.format(repr(u), repr(tracks[i])))
         u.last_track = tracks[i]
-        x = u.last_poll
-        u.last_poll = time.time()
-        if x is None:
-            return
         on_complete(u)
     get_tracks(u, request_completed)
 
