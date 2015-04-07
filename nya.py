@@ -180,7 +180,7 @@ def do_poll(u, on_complete):
         if u.last_track is not None:
             if u.last_track.name == tracks[i].name:
                 return
-        weechat.prnt('', '{}: {}'.format(repr(u), repr(tracks[i])))
+        weechat.prnt('', u'{}: {}'.format(repr(u), repr(tracks[i])))
         u.last_track = tracks[i]
         on_complete(u)
     get_tracks(u, request_completed)
