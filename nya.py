@@ -159,7 +159,7 @@ def get_video(track, on_complete):
                     q=u'{} {}'.format(track.artist, track.name),
                     maxResults=1,
                     type=u'video'), x)
-    except Exeception:
+    except Exception:
         on_complete(None)
 
 def do_poll(u, on_complete):
