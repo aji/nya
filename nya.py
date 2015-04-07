@@ -162,8 +162,8 @@ def get_video(track, on_complete):
 def do_poll(u, on_complete):
     def request_completed(ok, tracks, u):
         if not ok:
-            weechat.prnt('', '  !! #{}: {}'.format(
-                    tracks[u'error'], tracks[u'message']))
+            weechat.prnt('', '  !! {}: #{}: {}'.format(
+                    repr(u), tracks[u'error'], tracks[u'message']))
             return
         i = -1
         for j, t in enumerate(tracks):
