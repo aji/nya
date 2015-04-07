@@ -259,6 +259,8 @@ def get_following(bufname):
 def run_command(net, chan, args):
     bufname = '{},{}'.format(net, chan)
     buf = weechat.info_get('irc_buffer', bufname)
+    if len(args) < 1:
+        return
     if args[0] == 'follow':
         if do_follow(bufname, args[1]):
             conf_changed()
@@ -266,6 +268,7 @@ def run_command(net, chan, args):
             weechat.command(buf, '/say \0032now following {}'.format(args[1]))
         else:
             weechat.command(buf, '/say \0032already following {}'.format(args[1]))
+        return
     if args[0] == 'unfollow':
         if do_unfollow(bufname, args[1]):
             conf_changed()
@@ -273,6 +276,7 @@ def run_command(net, chan, args):
             weechat.command(buf, '/say \0032unfollowed {}'.format(args[1]))
         else:
             weechat.command(buf, '/say \0032not following {}'.format(args[1]))
+        return
     if args[0] == 'following':
         users = get_following(bufname)
         if len(users) == 0:
@@ -280,6 +284,7 @@ def run_command(net, chan, args):
         else:
             weechat.command(buf, '/say \0032following: {}'.format(', '.join(
                 u['lastfm'] for u in users)))
+        return
 
 def try_command(data, signal, signal_data):
     sig = weechat.info_get_hashtable('irc_message_parse', {
@@ -293,7 +298,10 @@ def try_command(data, signal, signal_data):
     tail = tail.lstrip()
     if not tail.startswith(nick):
         return weechat.WEECHAT_RC_OK
-    run_command(signal.split(',')[0], sig['channel'], tail.split()[1:])
+    data = tail.split()
+    if len(data) < 2:
+        return weechat.WEECHAT_RC_OK
+    run_command(signal.split(',')[0], sig['channel'], data[1:])
     return weechat.WEECHAT_RC_OK
 
 weechat.register('nya', 'aji', '1.0', 'MIT', 'nya!', '', '')
