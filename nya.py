@@ -79,7 +79,7 @@ def url_finished(cb, command, rc, out, err):
     try:
         URL_REQUEST_TMP[cb]['cb'](URL_REQUEST_TMP[cb]['data'])
     except Exception as e:
-        weechat.prnt('', '  !! {}'.format(str(e)))
+        weechat.prnt('', u'  !! {}'.format(str(e)))
         for ln in traceback.format_exc().split('\n'):
             weechat.prnt('', ln)
     del URL_REQUEST_TMP[cb]
@@ -180,7 +180,6 @@ def do_poll(u, on_complete):
         if u.last_track is not None:
             if u.last_track.name == tracks[i].name:
                 return
-        weechat.prnt('', u'{}: {}'.format(repr(u), repr(tracks[i])))
         u.last_track = tracks[i]
         on_complete(u)
     get_tracks(u, request_completed)
