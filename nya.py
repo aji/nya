@@ -142,6 +142,9 @@ def get_video(track, on_complete):
         if u'kind' not in d or d[u'kind'] != u'youtube#searchListResponse':
             on_complete(None)
             return
+        if len(d[u'items']) == 0:
+            on_complete(None)
+            return
         first = d[u'items'][0]
         if u'kind' not in first or first[u'kind'] != u'youtube#searchResult':
             on_complete(None)
