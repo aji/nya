@@ -98,19 +98,19 @@ def get_json(url, on_complete):
 
 class Track(object):
     def __init__(self, **kw):
-        self.image        = detext(kw.get('image',       None))
-        self.url          = detext(kw.get('url',         None))
-        self.streamable   = detext(kw.get('streamable',  None))
-        self.date         = detext(kw.get('date',        None))
-        self.artist       = detext(kw.get('artist',      None))
-        self.mbid         = detext(kw.get('mbid',        None))
-        self.album        = detext(kw.get('album',       None))
-        self.name         = detext(kw.get('name',        None))
+        self.image        = detext(kw.get(u'image',       None))
+        self.url          = detext(kw.get(u'url',         None))
+        self.streamable   = detext(kw.get(u'streamable',  None))
+        self.date         = detext(kw.get(u'date',        None))
+        self.artist       = detext(kw.get(u'artist',      None))
+        self.mbid         = detext(kw.get(u'mbid',        None))
+        self.album        = detext(kw.get(u'album',       None))
+        self.name         = detext(kw.get(u'name',        None))
 
         self.attrs        = kw.get('@attr', {})
 
     def __repr__(self):
-        return 'Track({} by {})'.format(self.name, self.artist)
+        return u'Track({} by {})'.format(self.name, self.artist)
 
 class User(object):
     def __init__(self, lastfm_name, buffers):
@@ -121,7 +121,7 @@ class User(object):
         self.last_poll    = None
 
     def __repr__(self):
-        return 'User({})'.format(self.lastfm_name)
+        return u'User({})'.format(self.lastfm_name)
 
 
 def get_tracks(u, on_complete):
@@ -139,30 +139,30 @@ def get_tracks(u, on_complete):
 
 def get_video(track, on_complete):
     def x(d):
-        if 'kind' not in d or d['kind'] != 'youtube#searchListResponse':
+        if u'kind' not in d or d[u'kind'] != u'youtube#searchListResponse':
             on_complete(None)
             return
-        first = d['items'][0]
-        if 'kind' not in first or first['kind'] != 'youtube#searchResult':
+        first = d[u'items'][0]
+        if u'kind' not in first or first[u'kind'] != u'youtube#searchResult':
             on_complete(None)
             return
-        vid = first['id']
-        if 'kind' not in vid or vid['kind'] != 'youtube#video':
+        vid = first[u'id']
+        if u'kind' not in vid or vid[u'kind'] != u'youtube#video':
             on_complete(None)
             return
-        on_complete(vid['videoId'])
+        on_complete(vid[u'videoId'])
     if not YOUTUBE_API_KEY():
         on_complete(None)
         return
-    get_json(youtube_url('search', part='snippet',
-                q='{} {}'.format(track.artist, track.name),
+    get_json(youtube_url(u'search', part=u'snippet',
+                q=u'{} {}'.format(track.artist, track.name),
                 maxResults=1,
-                type='video'), x)
+                type=u'video'), x)
 
 def do_poll(u, on_complete):
     def request_completed(ok, tracks, u):
         if not ok:
-            weechat.prnt('', '  !! {}: #{}: {}'.format(
+            weechat.prnt('', u'  !! {}: #{}: {}'.format(
                     repr(u), tracks[u'error'], tracks[u'message']))
             return
         i = -1
@@ -188,9 +188,9 @@ def do_poll(u, on_complete):
 def on_one_fire(data, remaining):
     def on_complete(u):
         def got_video_id(vid):
-            msg = ('/say \0033 {} now listening to "{}" by {}{}'
+            msg = (u'/say \0033 {} now listening to "{}" by {}{}'
                 .format(u.lastfm_name, u.last_track.name, u.last_track.artist,
-                '' if vid is None else ': http://youtu.be/{}'.format(vid))
+                u'' if vid is None else u': http://youtu.be/{}'.format(vid))
                 )
             for b in u.buffers:
                 buf = weechat.info_get('irc_buffer', b)
@@ -265,24 +265,24 @@ def run_command(net, chan, args):
         if do_follow(bufname, args[1]):
             conf_changed()
             save_conf()
-            weechat.command(buf, '/say \0032now following {}'.format(args[1]))
+            weechat.command(buf, u'/say \0032now following {}'.format(args[1]))
         else:
-            weechat.command(buf, '/say \0032already following {}'.format(args[1]))
+            weechat.command(buf, u'/say \0032already following {}'.format(args[1]))
         return
     if args[0] == 'unfollow':
         if do_unfollow(bufname, args[1]):
             conf_changed()
             save_conf()
-            weechat.command(buf, '/say \0032unfollowed {}'.format(args[1]))
+            weechat.command(buf, u'/say \0032unfollowed {}'.format(args[1]))
         else:
-            weechat.command(buf, '/say \0032not following {}'.format(args[1]))
+            weechat.command(buf, u'/say \0032not following {}'.format(args[1]))
         return
     if args[0] == 'following':
         users = get_following(bufname)
         if len(users) == 0:
-            weechat.command(buf, '/say \0032not following anybody!')
+            weechat.command(buf, u'/say \0032not following anybody!')
         else:
-            weechat.command(buf, '/say \0032following: {}'.format(', '.join(
+            weechat.command(buf, u'/say \0032following: {}'.format(', '.join(
                 u['lastfm'] for u in users)))
         return
 
@@ -314,4 +314,4 @@ for option, dfl in OPTIONS.items():
 load_conf()
 weechat.hook_signal('*,irc_in_privmsg', 'try_command', '')
 on_timer_fire('', '') #HAX ROFL
-weechat.prnt('', '(nya): nya (re)loaded')
+weechat.prnt('', u'(nya): nya (re)loaded')
