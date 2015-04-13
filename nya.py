@@ -1,7 +1,119 @@
-import json
 import urllib
 import time
 import traceback
+import json
+
+class JsonParseError(Exception):
+    pass
+
+SPACE_BYTES = bytearray(' \t\n')
+NUMBER_BYTES = bytearray('0123456789-.')
+ESCAPABLE = { u'"':  '"',   u'\\': '\\',  u'/':  '/',   u'b':  '\b',
+              u'f':  '\f',  u'n':  '\n',  u'r':  '\r',  u't':  '\t' }
+
+def skip_spaces(s):
+    i = 0
+    while i < len(s):
+        if s[i] not in SPACE_BYTES:
+            break
+        i = i + 1
+    return s[i:]
+
+def json_bytes_object(s):
+    obj = {}
+    while True:
+        s = skip_spaces(s)
+        if s[0] != ord('"'):
+            raise JsonParseError('expected string')
+        k, s = json_bytes_string(s[1:])
+        s = skip_spaces(s)
+        if s[0] != ord(':'):
+            raise JsonParseError('expected colon')
+        v, s = json_bytes_real(s[1:])
+        obj[k] = v
+        s = skip_spaces(s)
+        if s[0] == ord(','):
+            s = s[1:]
+            continue
+        if s[0] == ord('}'):
+            return obj, s[1:]
+        raise JsonParseError('expected comma or close brace')
+
+def json_bytes_array(s):
+    arr = []
+    while True:
+        s = skip_spaces(s)
+        v, s = json_bytes_real(s)
+        arr.append(v)
+        s = skip_spaces(s)
+        if s[0] == ord(','):
+            s = s[1:]
+            continue
+        if s[0] == ord(']'):
+            return arr, s[1:]
+        raise JsonParseError('expected comma or close bracket')
+
+def json_bytes_string(s):
+    string = bytearray()
+    while True:
+        if s[0] == ord('"'):
+            return string.decode('utf-8'), s[1:]
+        if s[0] == ord('\\'):
+            t, s = json_bytes_string_escape(s[1:])
+            string += t
+            continue
+        string.append(s[0])
+        s = s[1:]
+
+def json_bytes_string_escape(s):
+    if s[:1].decode('utf-8') in ESCAPABLE:
+        return bytearray(ESCAPABLE[s[:1].decode('utf-8')]), s[1:]
+    if s[0] == ord('x'):
+        return bytearray([int(s[1:3], 16)]), s[3:]
+    if s[0] == ord('u'):
+        x = s[1:5].decode('utf-8')
+        return bytearray(unichr(int(x, 16)).encode('utf-8')), s[5:]
+    # invalid use of escape sequence, but allow it..
+    return s[:1], s[1:]
+
+def json_bytes_number(s):
+    i = 0
+    while i < len(s):
+        if s[i] not in NUMBER_BYTES:
+            break
+        i = i + 1
+    if ord(b'.') in s[:i]:
+        n = float(s[:i])
+    else:
+        n = int(s[:i])
+    return n, s[i:]
+
+def json_bytes_real(s):
+    s = skip_spaces(s)
+
+    if len(s) == 0:
+        raise JsonParseError('no data')
+
+    if s[0] == ord('{'):
+        return json_bytes_object(s[1:])
+    if s[0] == ord('['):
+        return json_bytes_array(s[1:])
+    if s[0] == ord('"'):
+        return json_bytes_string(s[1:])
+    if s[0] in NUMBER_BYTES:
+        return json_bytes_number(s)
+    if s[:4] == bytearray('true'):
+        return True, s[4:]
+    if s[:5] == bytearray('false'):
+        return False, s[5:]
+    if s[:4] == bytearray('null'):
+        return None, s[4:]
+
+    raise JsonParseError('invalid JSON input')
+
+def json_bytes(s):
+    j, s = json_bytes_real(s)
+    return j
 
 CONFPATH = 'nya.json'
 ON_CONF_CHANGED = []
@@ -93,7 +205,7 @@ def get_data(url, cb):
 
 def get_json(url, on_complete):
     def x(d):
-        on_complete(json.loads(d))
+        on_complete(json_bytes(bytearray(d)))
     get_data(url, x)
 
 class Track(object):
@@ -159,7 +271,7 @@ def get_video(track, on_complete):
         return
     try:
         get_json(youtube_url(u'search', part=u'snippet',
-                    q=u'{} {}'.format(track.artist, track.name),
+                    q=u'{} {}'.format(track.artist, track.name).encode('utf-8'),
                     maxResults=1,
                     type=u'video'), x)
     except Exception:
@@ -193,9 +305,16 @@ def do_poll(u, on_complete):
 def on_one_fire(data, remaining):
     def on_complete(u):
         def got_video_id(vid):
-            msg = (u'/say \0033 {} now listening to "{}" by {}{}'
-                .format(u.lastfm_name, u.last_track.name, u.last_track.artist,
-                u'' if vid is None else u': http://youtu.be/{}'.format(vid))
+            msg = ('/say \0033 {} now listening to "{}" by {}{}'
+                .format(
+                    u.lastfm_name,
+                    u.last_track.name.encode('utf-8'),
+                    u.last_track.artist.encode('utf-8'),
+                    (u'' if vid is None else u': http://youtu.be/{}'
+                        .format(vid)
+                        .encode('utf-8')
+                        )
+                    )
                 )
             for b in u.buffers:
                 buf = weechat.info_get('irc_buffer', b)
