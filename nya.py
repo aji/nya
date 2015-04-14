@@ -3,6 +3,33 @@ import time
 import traceback
 import json
 
+# Up at the top.. where I can think...
+#
+# This function answers the question "For what minimal N can I cut off N things
+# from the front of 'new' before the resulting list is contained in or a suffix
+# of 'old' a suffix of 'old'?" The implementation here just brute-forces it,
+# trying increasing values for N until the condition is met.
+#
+# Accepts lists of anything whose equality can be tested with '=='
+
+def prefix_size(new, old):
+    for n in range(len(new)):
+        if is_suffix(new[n:], old):
+            return n
+    return len(new)
+
+def is_suffix(suffix, container):
+    for i in range(len(container)):
+        no_match = False
+        for j in range(min(len(suffix), len(container) - i)):
+            if suffix[j] != container[i + j]:
+                no_match = True
+                break
+        if no_match:
+            continue
+        return True
+    return False
+
 class JsonParseError(Exception):
     pass
 
@@ -224,13 +251,29 @@ class Track(object):
     def __repr__(self):
         return u'Track({} by {})'.format(self.name, self.artist)
 
+    def __eq__(self, other):
+        #if self.date is not None and other.date is not None:
+        #    if self.date != other.date:
+        #        return False
+
+        if self.name != other.name:
+            return False
+
+        if self.artist != other.artist:
+            return False
+
+        return True
+
+    def __ne__(self, other):
+        return not (self == other)
+
 class User(object):
     def __init__(self, lastfm_name, buffers):
         self.lastfm_name  = lastfm_name
         self.buffers      = buffers
 
-        self.last_track   = None
-        self.last_poll    = None
+        self.last_tracks  = []
+        self.newest       = []
 
     def __repr__(self):
         return u'User({})'.format(self.lastfm_name)
@@ -252,22 +295,22 @@ def get_tracks(u, on_complete):
 def get_video(track, on_complete):
     def x(d):
         if u'kind' not in d or d[u'kind'] != u'youtube#searchListResponse':
-            on_complete(None)
+            on_complete(track, None)
             return
         if len(d[u'items']) == 0:
-            on_complete(None)
+            on_complete(track, None)
             return
         first = d[u'items'][0]
         if u'kind' not in first or first[u'kind'] != u'youtube#searchResult':
-            on_complete(None)
+            on_complete(track, None)
             return
         vid = first[u'id']
         if u'kind' not in vid or vid[u'kind'] != u'youtube#video':
-            on_complete(None)
+            on_complete(track, None)
             return
-        on_complete(vid[u'videoId'])
+        on_complete(track, vid[u'videoId'])
     if not YOUTUBE_API_KEY():
-        on_complete(None)
+        on_complete(track, None)
         return
     try:
         get_json(youtube_url(u'search', part=u'snippet',
@@ -283,33 +326,30 @@ def do_poll(u, on_complete):
             weechat.prnt('', u'  !! {}: #{}: {}'.format(
                     repr(u), tracks[u'error'], tracks[u'message']))
             return
-        i = -1
-        for j, t in enumerate(tracks):
-            if u'nowplaying' in t.attrs and t.attrs[u'nowplaying'] == u'true':
-                i = j
-                break
-        if i == -1:
+
+        if len(u.last_tracks) == 0:
+            u.last_tracks = tracks[:]
+            u.newest = []
             return
-        last_last_poll = u.last_poll
-        u.last_poll = time.time()
-        if last_last_poll is None:
-            u.last_track = tracks[i]
-            return
-        if u.last_track is not None:
-            if u.last_track.name == tracks[i].name:
-                return
-        u.last_track = tracks[i]
+
+        i = prefix_size(tracks[:], u.last_tracks[:])
+        u.last_tracks = tracks[:]
+        u.newest = []
+        if i > 0:
+            u.newest = tracks[:1]
+
         on_complete(u)
+
     get_tracks(u, request_completed)
 
 def on_one_fire(data, remaining):
     def on_complete(u):
-        def got_video_id(vid):
+        def got_video_id(t, vid):
             msg = ('/say \0033 {} now listening to "{}" by {}{}'
                 .format(
                     u.lastfm_name,
-                    u.last_track.name.encode('utf-8'),
-                    u.last_track.artist.encode('utf-8'),
+                    t.name.encode('utf-8'),
+                    t.artist.encode('utf-8'),
                     (u'' if vid is None else u': http://youtu.be/{}'
                         .format(vid)
                         .encode('utf-8')
@@ -320,7 +360,9 @@ def on_one_fire(data, remaining):
                 buf = weechat.info_get('irc_buffer', b)
                 if buf:
                     weechat.command(buf, msg)
-        get_video(u.last_track, got_video_id)
+        for t in u.newest:
+            get_video(t, got_video_id)
+        u.newest = []
     if int(remaining) < len(ALL_USERS):
         u = ALL_USERS[int(remaining)]
         do_poll(u, on_complete)
@@ -339,9 +381,19 @@ def on_timer_fire(data, remaining):
     return weechat.WEECHAT_RC_OK
 
 ALL_USERS = []
+USERS_BY_LASTFM = {}
 def initialize_users():
-    global ALL_USERS
-    ALL_USERS = [User(u['lastfm'], u['buffers']) for u in CONF['users']]
+    global ALL_USERS, USERS_BY_LASTFM
+    users = {}
+    for u in CONF['users']:
+        if u['lastfm'] in USERS_BY_LASTFM:
+            user = USERS_BY_LASTFM[u['lastfm']]
+            user.buffers = u['buffers']
+        else:
+            user = User(u['lastfm'], u['buffers'])
+        users[user.lastfm_name] = user
+    ALL_USERS = list(users.values())
+    USERS_BY_LASTFM = users
 ON_CONF_CHANGED.append(initialize_users)
 
 def do_follow(bufname, user):
