@@ -232,7 +232,7 @@ def get_data(url, cb):
 
 def get_json(url, on_complete):
     def x(d):
-        on_complete(json_bytes(bytearray(d)))
+        on_complete(json.loads(d))
     get_data(url, x)
 
 class Track(object):
