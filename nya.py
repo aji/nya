@@ -248,6 +248,8 @@ class Track(object):
 
         self.attrs        = kw.get('@attr', {})
 
+        self.now_playing  = self.attrs.get(u'nowplaying') == u'true'
+
     def __repr__(self):
         return u'Track({} by {})'.format(self.name, self.artist)
 
@@ -345,9 +347,10 @@ def do_poll(u, on_complete):
 def on_one_fire(data, remaining):
     def on_complete(u):
         def got_video_id(t, vid):
-            msg = ('/say \0033 {} now listening to "{}" by {}{}'
+            msg = ('/say \0033 {} {} to "{}" by {}{}'
                 .format(
                     u.lastfm_name,
+                    'now listening' if t.now_playing else 'listened',
                     t.name.encode('utf-8'),
                     t.artist.encode('utf-8'),
                     (u'' if vid is None else u': http://youtu.be/{}'
