@@ -236,14 +236,10 @@ def get_json(url, on_complete):
     get_data(url, x)
 
 class Track(object):
-    def __init__(self, **kw):
-        self.image        = detext(kw.get(u'image',       None))
+    def __init__(self, kw):
         self.url          = detext(kw.get(u'url',         None))
-        self.streamable   = detext(kw.get(u'streamable',  None))
         self.date         = detext(kw.get(u'date',        None))
         self.artist       = detext(kw.get(u'artist',      None))
-        self.mbid         = detext(kw.get(u'mbid',        None))
-        self.album        = detext(kw.get(u'album',       None))
         self.name         = detext(kw.get(u'name',        None))
 
         self.attrs        = kw.get('@attr', {})
@@ -287,7 +283,7 @@ def get_tracks(u, on_complete):
             on_complete(False, d, u)
         tracks = []
         for t in d[u'recenttracks'][u'track']:
-            tracks.append(Track(**t))
+            tracks.append(Track(t))
         on_complete(True, tracks, u)
     if not LASTFM_API_KEY():
         on_complete(False, {u'error': '-1', u'message': 'no lastfm key'}, u)
