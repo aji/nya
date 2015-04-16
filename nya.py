@@ -176,7 +176,7 @@ def get_tracks(u, on_complete):
     if not LASTFM_API_KEY():
         on_complete(False, {u'error': '-1', u'message': 'no lastfm key'}, u)
         return
-    get_json(lastfm_url('user.getRecentTracks', user=u.lastfm_name, limit='10'), x)
+    get_json(lastfm_url('user.getRecentTracks', user=u.lastfm_name, limit='20'), x)
 
 def get_video(track, on_complete):
     def x(d):
@@ -218,11 +218,26 @@ def do_poll(u, on_complete):
             u.newest = []
             return
 
-        i = prefix_size(tracks[:], u.last_tracks[:])
-        u.last_tracks = tracks[:]
-        u.newest = []
-        if i > 0:
-            u.newest = tracks[:1]
+        # CASES:
+        #
+        #   1 2 3 4  new=1, old=0
+        #   0 1 2 3  -> track 0 was added
+        #
+        #   1 2 3 1  new=1, old=4
+        #   2 1 2 3  -> track 2 was added
+        #
+        #   1 2 3 4  new=3, old=1
+        #   2 3 4 1  -> track 1 was deleted
+
+        new = prefix_size(tracks[:], u.last_tracks[:])
+        old = prefix_size(u.last_tracks[:], tracks[:])
+        if old > new and old < len(tracks) / 2: # something was deleted!
+            # ignore it
+            pass
+        elif new < len(tracks) / 2:
+            u.last_tracks = tracks[:]
+            u.newest = []
+            u.newest = tracks[:new]
 
         on_complete(u)
 
