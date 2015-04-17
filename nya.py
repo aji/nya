@@ -262,7 +262,7 @@ def on_one_fire(data, remaining):
                 buf = weechat.info_get('irc_buffer', b)
                 if buf:
                     weechat.command(buf, msg)
-        for t in u.newest:
+        for t in reversed(u.newest):
             get_video(t, got_video_id)
         u.newest = []
     if int(remaining) < len(ALL_USERS):
