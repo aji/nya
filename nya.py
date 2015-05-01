@@ -246,7 +246,7 @@ def do_poll(u, on_complete):
 def on_one_fire(data, remaining):
     def on_complete(u):
         def got_video_id(t, vid):
-            msg = ('/say \0033 {} {} to "{}" by {}{}'
+            msg = ('/say \0033{} {} to "{}" by {}{}'
                 .format(
                     u.lastfm_name,
                     'now listening' if t.now_playing else 'listened',
