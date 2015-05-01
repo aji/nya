@@ -79,13 +79,11 @@ YOUTUBE_API_ROOT = option('youtube.root')
 YOUTUBE_API_KEY  = option('youtube.key')
 
 def lastfm_url(method, **params):
-    q = {
-        'format': 'json',
-        'api_key': LASTFM_API_KEY(),
-        'method': method,
-        }
-    q.update(params)
-    return LASTFM_API_ROOT() + '?' + urllib.urlencode(q)
+    pre = '?method={}&format={}&api_key={}'.format(method, 'json', LASTFM_API_KEY())
+    extra = ''
+    if len(params) > 0:
+        extra = '&' + urllib.urlencode(params)
+    return LASTFM_API_ROOT() + '{}{}'.format(pre, extra)
 
 def youtube_url(method, **params):
     q = { 'key': YOUTUBE_API_KEY() }
@@ -116,11 +114,16 @@ def get_data(url, cb):
     URL_REQUEST_LAST += 1
     k = str(URL_REQUEST_LAST)
     URL_REQUEST_TMP[k] = {'cb':cb, 'data':''}
+    weechat.prnt('', 'fetch: {}'.format(url))
     weechat.hook_process('url:{}'.format(url), 5*1000, 'url_finished', k)
 
 def get_json(url, on_complete):
     def x(d):
-        on_complete(json.loads(d))
+        try:
+            on_complete(json.loads(d))
+        except ValueError as e:
+            weechat.prnt('', repr(d))
+            raise e
     get_data(url, x)
 
 class Track(object):
@@ -277,8 +280,8 @@ def on_timer_fire(data, remaining):
     if not YOUTUBE_API_KEY():
         weechat.prnt('', 'warning: no youtube key')
     if len(ALL_USERS) > 0:
-        weechat.hook_timer(900, 0, len(ALL_USERS), 'on_one_fire', '')
-    weechat.hook_timer((max(len(ALL_USERS), 5) + 2) * 1000,
+        weechat.hook_timer(1900, 0, len(ALL_USERS), 'on_one_fire', '')
+    weechat.hook_timer((max(len(ALL_USERS), 5) + 2) * 2000,
                        0, 1, 'on_timer_fire', '')
     return weechat.WEECHAT_RC_OK
 
