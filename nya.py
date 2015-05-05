@@ -218,7 +218,6 @@ def do_poll(u, on_complete):
 
         if len(u.last_tracks) == 0:
             u.last_tracks = tracks[:]
-            u.newest = []
             return
 
         # CASES:
@@ -239,8 +238,7 @@ def do_poll(u, on_complete):
             pass
         elif new < len(tracks) / 2:
             u.last_tracks = tracks[:]
-            u.newest = []
-            u.newest = tracks[:new]
+            u.newest = tracks[:new] + u.newest
 
         on_complete(u)
 
@@ -248,6 +246,11 @@ def do_poll(u, on_complete):
 
 def on_one_fire(data, remaining):
     def on_complete(u):
+        def get_next_video():
+            if len(u.newest) == 0:
+                return
+            get_video(u.newest[-1], got_video_id)
+            u.newest = u.newest[:-1]
         def got_video_id(t, vid):
             msg = ('/say \0033{} {} to "{}" by {}{}'
                 .format(
@@ -265,9 +268,8 @@ def on_one_fire(data, remaining):
                 buf = weechat.info_get('irc_buffer', b)
                 if buf:
                     weechat.command(buf, msg)
-        for t in reversed(u.newest):
-            get_video(t, got_video_id)
-        u.newest = []
+            get_next_video()
+        get_next_video()
     if int(remaining) < len(ALL_USERS):
         u = ALL_USERS[int(remaining)]
         do_poll(u, on_complete)
