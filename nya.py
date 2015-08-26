@@ -96,6 +96,8 @@ def alert(msg, limit=None):
             try:
                 chan = bufname.split(',')[-1]
                 buf = weechat.info_get('irc_buffer', bufname)
+                if not buf:
+                    continue
                 weechat.command(buf, cmd.format(chan, msg))
             except IndexError:
                 pass
