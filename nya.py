@@ -199,10 +199,11 @@ def get_tracks(u, on_complete):
                 ),
             x
             )
-    except:
+    except Exception as e:
         alert('exception when getting recent tracks:')
+        alert('  {}'.format(repr(e)))
         for ln in traceback.format_exc().split('\n'):
-            alert(ln, limit=10)
+            weechat.prnt('', ln)
 
 def get_video(track, on_complete):
     def x(d):
