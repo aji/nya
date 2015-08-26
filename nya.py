@@ -74,6 +74,32 @@ OPTIONS = {
 def option(name):
     return lambda: weechat.config_get_plugin(name)
 
+ALERT_COUNT = 0
+def alert(msg, limit=None):
+    global ALERT_COUNT
+    weechat.prnt('', 'ALERT: ' + msg)
+    if limit is None:
+        ALERT_COUNT = 0
+    else:
+        ALERT_COUNT += 1
+        if ALERT_COUNT == limit + 1:
+            msg = '(... output truncated, see weechat buffer ...)'
+        elif ALERT_COUNT > limit:
+            return
+    cmd = '/msg @{} \0030,4 {} \003'
+    used = set()
+    for u in ALL_USERS:
+        for bufname in u.buffers:
+            if bufname in used:
+                continue
+            used.add(bufname)
+            try:
+                chan = bufname.split(',')[-1]
+                buf = weechat.info_get('irc_buffer', bufname)
+                weechat.command(buf, cmd.format(chan, msg))
+            except IndexError:
+                pass
+
 LASTFM_API_ROOT  = option('lastfm.root')
 LASTFM_API_KEY   = option('lastfm.key')
 YOUTUBE_API_ROOT = option('youtube.root')
@@ -105,7 +131,7 @@ def get_json(url, on_complete):
         try:
             on_complete(json.loads(d))
         except ValueError as e:
-            weechat.prnt('', repr(d))
+            alert('json.loads error: ' + repr(d))
             raise e
     get_data(url, x)
 
@@ -172,8 +198,9 @@ def get_tracks(u, on_complete):
             x
             )
     except:
+        alert('exception when getting recent tracks:')
         for ln in traceback.format_exc().split('\n'):
-            weechat.prnt('', ln)
+            alert(ln, limit=10)
 
 def get_video(track, on_complete):
     def x(d):
@@ -206,8 +233,8 @@ def get_video(track, on_complete):
 def do_poll(u, on_complete):
     def request_completed(ok, tracks, u):
         if not ok:
-            weechat.prnt('', u'  !! {}: #{}: {}'.format(
-                    repr(u), tracks[u'error'], tracks[u'message']))
+            alert(u'  !! {}: #{}: {}'.format(
+                  repr(u), tracks[u'error'], tracks[u'message']))
             return
 
         if len(u.last_tracks) == 0:
@@ -267,10 +294,10 @@ def on_one_fire(data, remaining):
 
 def on_timer_fire(data, remaining):
     if not LASTFM_API_KEY():
-        weechat.prnt('', '!!!! no lastfm key set')
+        alert('!!!! no lastfm key set')
         return weechat.WEECHAT_RC_ERROR
     if not YOUTUBE_API_KEY():
-        weechat.prnt('', 'warning: no youtube key')
+        alert('warning: no youtube key')
     if len(ALL_USERS) > 0:
         weechat.hook_timer(1900, 0, len(ALL_USERS), 'on_one_fire', '')
     weechat.hook_timer((max(len(ALL_USERS), 5) + 2) * 2000,
@@ -387,4 +414,4 @@ for option, dfl in OPTIONS.items():
 load_conf()
 weechat.hook_signal('*,irc_in_privmsg', 'try_command', '')
 on_timer_fire('', '') #HAX ROFL
-weechat.prnt('', u'(nya): nya (re)loaded')
+alert(u'(nya): nya (re)loaded')
