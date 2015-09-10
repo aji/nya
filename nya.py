@@ -3,6 +3,7 @@ import urllib2
 import time
 import traceback
 import json
+import string
 
 # Up at the top.. where I can think...
 #
@@ -30,6 +31,9 @@ def is_suffix(suffix, container):
             continue
         return True
     return False
+
+def normalize(word):
+    return ''.join(x for x in word.lower() if x not in string.punctuation)
 
 CONFPATH = 'nya.json'
 ON_CONF_CHANGED = []
@@ -156,10 +160,10 @@ class Track(object):
         #    if self.date != other.date:
         #        return False
 
-        if self.name != other.name:
+        if normalize(self.name) != normalize(other.name):
             return False
 
-        if self.artist != other.artist:
+        if normalize(self.artist) != normalize(other.artist):
             return False
 
         return True
