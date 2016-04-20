@@ -1,5 +1,4 @@
 import urllib
-import urllib2
 import time
 import traceback
 import json
@@ -128,9 +127,27 @@ def detext(s):
         return s['#text']
     return s
 
+URL_REQUEST_TMP = {}
+URL_REQUEST_LAST = 0
+def url_finished(cb, command, rc, out, err):
+    URL_REQUEST_TMP[cb]['data'] += out
+    if rc < 0:
+        return weechat.WEECHAT_RC_OK
+    try:
+        URL_REQUEST_TMP[cb]['cb'](URL_REQUEST_TMP[cb]['data'])
+    except Exception as e:
+        weechat.prnt('', u'  !! {}'.format(str(e)))
+        for ln in traceback.format_exc().split('\n'):
+            weechat.prnt('', ln)
+    del URL_REQUEST_TMP[cb]
+    return weechat.WEECHAT_RC_OK
 def get_data(url, cb):
+    global URL_REQUEST_LAST
+    URL_REQUEST_LAST += 1
+    k = str(URL_REQUEST_LAST)
+    URL_REQUEST_TMP[k] = {'cb':cb, 'data':''}
     weechat.prnt('', 'fetch: {}'.format(url))
-    cb(urllib2.urlopen(url).read())
+    weechat.hook_process('url:{}'.format(url), 5*1000, 'url_finished', k)
 
 def get_json(url, on_complete):
     def x(d):
@@ -274,6 +291,11 @@ def do_poll(u, on_complete):
 
 def on_one_fire(data, remaining):
     def on_complete(u):
+        def get_next_video():
+            if len(u.newest) == 0:
+                return
+            get_video(u.newest[-1], got_video_id)
+            u.newest = u.newest[:-1]
         def got_video_id(t, vid):
             msg = ('/say \0033{} {} to "{}" by {}{}'
                 .format(
@@ -291,9 +313,8 @@ def on_one_fire(data, remaining):
                 buf = weechat.info_get('irc_buffer', b)
                 if buf:
                     weechat.command(buf, msg)
-        for track in u.newest:
-            get_video(track, got_video_id)
-        u.newest = []
+            get_next_video()
+        get_next_video()
     if int(remaining) < len(ALL_USERS):
         u = ALL_USERS[int(remaining)]
         do_poll(u, on_complete)
