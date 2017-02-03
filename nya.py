@@ -325,7 +325,8 @@ def do_poll(u, on_complete):
             TRACE('fetched tracks:')
             trace_repr(tracks)
         elif new < len(tracks) / 2:
-            TRACE('adding a track')
+            if new > 0:
+                TRACE('adding tracks')
             u.last_tracks = tracks[:]
             u.newest = tracks[:new] + u.newest
         else:
