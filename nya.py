@@ -105,6 +105,37 @@ def alert(msg, limit=None):
             except IndexError:
                 pass
 
+LOGLEVELS = ['info', 'debug', 'trace']
+LOGLEVEL = 1
+def log(msg, level=0):
+    if level > LOGLEVEL:
+        return
+    cmd = '/msg @{} \00302{}\003'
+    used = set()
+    for u in ALL_USERS:
+        for bufname in u.buffers:
+            if bufname in used:
+                continue
+            used.add(bufname)
+            try:
+                chan = bufname.split(',')[-1]
+                buf = weechat.info_get('irc_buffer', bufname)
+                if not buf:
+                    continue
+                weechat.command(buf, cmd.format(chan, msg))
+            except:
+                pass
+def log_set_level(level):
+    global LOGLEVEL
+    try:
+        LOGLEVEL = LOGLEVELS.index(level.lower())
+        return True
+    except:
+        return False
+INFO = lambda s: log(s, 0)
+DEBUG = lambda s: log(s, 1)
+TRACE = lambda s: log(s, 2)
+
 LASTFM_API_ROOT  = option('lastfm.root')
 LASTFM_API_KEY   = option('lastfm.key')
 YOUTUBE_API_ROOT = option('youtube.root')
@@ -212,6 +243,7 @@ def get_tracks(u, on_complete):
         on_complete(False, {u'error': '-1', u'message': 'no lastfm key'}, u)
         return
     try:
+        TRACE('checking tracks for {}'.format(u.lastfm_name))
         get_json(
             lastfm_url(
                 'user.getRecentTracks',
@@ -263,6 +295,9 @@ def do_poll(u, on_complete):
 
         if len(u.last_tracks) == 0:
             u.last_tracks = tracks[:]
+            DEBUG('tracks initialized to:')
+            for i in range(0, len(u.last_tracks), 3):
+                DEBUG('   ' + ' '.join(repr(x) for x in u.last_tracks[i:i+3]))
             return
 
         # CASES:
@@ -278,12 +313,27 @@ def do_poll(u, on_complete):
 
         new = prefix_size(tracks[:], u.last_tracks[:])
         old = prefix_size(u.last_tracks[:], tracks[:])
+        TRACE('new={} old={}'.format(new, old))
         if old > new and old < len(tracks) / 2: # something was deleted!
-            # ignore it
-            pass
+            DEBUG('it appears something was deleted. ignoring')
+            TRACE('last tracks:')
+            for i in range(0, len(u.last_tracks), 3):
+                TRACE('   ' + ' '.join(repr(x) for x in u.last_tracks[i:i+3]))
+            TRACE('fetched tracks:')
+            for i in range(0, len(tracks), 3):
+                TRACE('   ' + ' '.join(repr(x) for x in tracks[i:i+3]))
         elif new < len(tracks) / 2:
+            TRACE('adding a track')
             u.last_tracks = tracks[:]
             u.newest = tracks[:new] + u.newest
+        else:
+            alert('ended up in third branch!')
+            TRACE('last tracks:')
+            for i in range(0, len(u.last_tracks), 3):
+                TRACE('   ' + ' '.join(repr(x) for x in u.last_tracks[i:i+3]))
+            TRACE('fetched tracks:')
+            for i in range(0, len(tracks), 3):
+                TRACE('   ' + ' '.join(repr(x) for x in tracks[i:i+3]))
 
         on_complete(u)
 
@@ -413,6 +463,11 @@ def run_command(net, chan, args):
             weechat.command(buf, u'/say \0032following: {}'.format(', '.join(
                 u['lastfm'] for u in users)))
         return
+    if args[0] == 'log':
+        if log_set_level(args[1]):
+            weechat.command(buf, u'/say \00302logging at {}', LOGLEVELS[LOGLEVEL])
+        else:
+            weechat.command(buf, u'/say \00302{} is not a valid log level'.format(args[1]))
 
 def try_command(data, signal, signal_data):
     sig = weechat.info_get_hashtable('irc_message_parse', {
