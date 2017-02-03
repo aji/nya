@@ -136,6 +136,10 @@ INFO = lambda s: log(s, 0)
 DEBUG = lambda s: log(s, 1)
 TRACE = lambda s: log(s, 2)
 
+def trace_repr(xs, group=5):
+    for i in range(0, len(xs), group):
+        TRACE('   ' + ' '.join(repr(x) for x in xs[i:i+group]))
+
 LASTFM_API_ROOT  = option('lastfm.root')
 LASTFM_API_KEY   = option('lastfm.key')
 YOUTUBE_API_ROOT = option('youtube.root')
@@ -317,11 +321,9 @@ def do_poll(u, on_complete):
         if old > new and old < len(tracks) / 2: # something was deleted!
             DEBUG('it appears something was deleted. ignoring')
             TRACE('last tracks:')
-            for i in range(0, len(u.last_tracks), 3):
-                TRACE('   ' + ' '.join(repr(x) for x in u.last_tracks[i:i+3]))
+            trace_repr(u.last_tracks)
             TRACE('fetched tracks:')
-            for i in range(0, len(tracks), 3):
-                TRACE('   ' + ' '.join(repr(x) for x in tracks[i:i+3]))
+            trace_repr(tracks)
         elif new < len(tracks) / 2:
             TRACE('adding a track')
             u.last_tracks = tracks[:]
@@ -329,11 +331,9 @@ def do_poll(u, on_complete):
         else:
             alert('ended up in third branch!')
             TRACE('last tracks:')
-            for i in range(0, len(u.last_tracks), 3):
-                TRACE('   ' + ' '.join(repr(x) for x in u.last_tracks[i:i+3]))
+            trace_repr(u.last_tracks)
             TRACE('fetched tracks:')
-            for i in range(0, len(tracks), 3):
-                TRACE('   ' + ' '.join(repr(x) for x in tracks[i:i+3]))
+            trace_repr(tracks)
 
         on_complete(u)
 
@@ -465,7 +465,7 @@ def run_command(net, chan, args):
         return
     if args[0] == 'log':
         if log_set_level(args[1]):
-            weechat.command(buf, u'/say \00302logging at {}', LOGLEVELS[LOGLEVEL])
+            weechat.command(buf, u'/say \00302logging at {}'.format(LOGLEVELS[LOGLEVEL]))
         else:
             weechat.command(buf, u'/say \00302{} is not a valid log level'.format(args[1]))
 
