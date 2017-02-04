@@ -333,7 +333,7 @@ def do_poll(u, on_complete):
                 DEBUG(u.lastfm_name + u' adding tracks')
             u.last_tracks = tracks[:]
             u.newest = tracks[:new] + u.newest
-        elif new == len(tracks) and old == len(tracks)
+        elif new == len(tracks) and old == len(tracks):
             alert(u.lastfm_name + u' has a completely new set of tracks!')
             INFO(u.lastfm_name + u' last tracks:')
             trace_repr(u.last_tracks, fn=INFO)
