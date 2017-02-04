@@ -187,7 +187,7 @@ def get_data(url, cb):
 def get_json(url, on_complete):
     def x(d):
         try:
-            on_complete(json.loads(d))
+            on_complete(json.loads(d, 'utf-8'))
         except ValueError as e:
             alert('json.loads error: ' + repr(d))
             raise e
