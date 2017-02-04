@@ -208,7 +208,7 @@ class Track(object):
         self.now_playing  = self.attrs.get(u'nowplaying') == u'true'
 
     def __repr__(self):
-        return u'Track({} by {})'.format(self.name, self.artist)
+        return 'Track({} by {})'.format(repr(self.name), repr(self.artist))
 
     def __eq__(self, other):
         #if self.date is not None and other.date is not None:
@@ -235,7 +235,7 @@ class User(object):
         self.newest       = []
 
     def __repr__(self):
-        return u'User({})'.format(self.lastfm_name)
+        return 'User({})'.format(repr(self.lastfm_name))
 
 
 def get_tracks(u, on_complete):
