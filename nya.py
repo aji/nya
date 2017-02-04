@@ -136,9 +136,9 @@ INFO = lambda s: log(s, 0)
 DEBUG = lambda s: log(s, 1)
 TRACE = lambda s: log(s, 2)
 
-def trace_repr(xs, group=5):
+def trace_repr(xs, group=5, fn=TRACE):
     for i in range(0, len(xs), group):
-        TRACE('   ' + ' '.join(repr(x) for x in xs[i:i+group]))
+        fn('   ' + ' '.join(repr(x) for x in xs[i:i+group]))
 
 LASTFM_API_ROOT  = option('lastfm.root')
 LASTFM_API_KEY   = option('lastfm.key')
@@ -333,8 +333,15 @@ def do_poll(u, on_complete):
                 DEBUG(u.lastfm_name + u' adding tracks')
             u.last_tracks = tracks[:]
             u.newest = tracks[:new] + u.newest
+        elif new == len(tracks) and old == len(tracks)
+            alert(u.lastfm_name + u' has a completely new set of tracks!')
+            INFO(u.lastfm_name + u' last tracks:')
+            trace_repr(u.last_tracks, fn=INFO)
+            INFO(u.lastfm_name + u' fetched tracks:')
+            trace_repr(tracks, fn=INFO)
+            u.last_tracks = tracks[:]
         else:
-            alert(u.lastfm_name + u' ended up in third branch!')
+            alert(u.lastfm_name + u' ended up in final branch!')
             TRACE(u.lastfm_name + u' last tracks:')
             trace_repr(u.last_tracks)
             TRACE(u.lastfm_name + u' fetched tracks:')
