@@ -321,7 +321,7 @@ def do_poll(u, on_complete):
         new = prefix_size(tracks[:], u.last_tracks[:])
         old = prefix_size(u.last_tracks[:], tracks[:])
         if new != 0 or (old != 0 and old != 1):
-            TRACE(u.lastfm_name + u' new={} old={}'.format(new, old))
+            DEBUG(u.lastfm_name + u' new={} old={}'.format(new, old))
         if old > new and old < len(tracks) / 2: # something was deleted!
             TRACE(u.lastfm_name + u' apparent deletion')
             TRACE(u.lastfm_name + u' last tracks:')
@@ -330,7 +330,7 @@ def do_poll(u, on_complete):
             trace_repr(tracks)
         elif new < len(tracks) / 2:
             if new > 0:
-                TRACE(u.lastfm_name + u' adding tracks')
+                DEBUG(u.lastfm_name + u' adding tracks')
             u.last_tracks = tracks[:]
             u.newest = tracks[:new] + u.newest
         else:
