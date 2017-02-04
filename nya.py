@@ -174,13 +174,15 @@ def url_finished(cb, command, rc, out, err):
         weechat.prnt('', u'  !! {}'.format(str(e)))
         for ln in traceback.format_exc().split('\n'):
             weechat.prnt('', ln)
+        alert('Exception when handling ' + URL_REQUEST_TMP[cb]['url'])
+        alert('  ' + repr(e))
     del URL_REQUEST_TMP[cb]
     return weechat.WEECHAT_RC_OK
 def get_data(url, cb):
     global URL_REQUEST_LAST
     URL_REQUEST_LAST += 1
     k = str(URL_REQUEST_LAST)
-    URL_REQUEST_TMP[k] = {'cb':cb, 'data':''}
+    URL_REQUEST_TMP[k] = {'cb':cb, 'url':url, 'data':''}
     weechat.prnt('', 'fetch: {}'.format(url))
     weechat.hook_process('url:{}'.format(url), 5*1000, 'url_finished', k)
 
@@ -300,9 +302,9 @@ def do_poll(u, on_complete):
 
         if len(u.last_tracks) == 0:
             u.last_tracks = tracks[:]
-            DEBUG('tracks initialized to:')
+            TRACE(u.lastfm_name + u' tracks initialized to:')
             for i in range(0, len(u.last_tracks), 3):
-                DEBUG('   ' + ' '.join(repr(x) for x in u.last_tracks[i:i+3]))
+                TRACE(u'   ' + u' '.join(repr(x) for x in u.last_tracks[i:i+3]))
             return
 
         # CASES:
@@ -318,23 +320,24 @@ def do_poll(u, on_complete):
 
         new = prefix_size(tracks[:], u.last_tracks[:])
         old = prefix_size(u.last_tracks[:], tracks[:])
-        TRACE('new={} old={}'.format(new, old))
+        if new != 0 or (old != 0 and old != 1):
+            TRACE(u.lastfm_name + u' new={} old={}'.format(new, old))
         if old > new and old < len(tracks) / 2: # something was deleted!
-            DEBUG('it appears something was deleted. ignoring')
-            TRACE('last tracks:')
+            TRACE(u.lastfm_name + u' apparent deletion')
+            TRACE(u.lastfm_name + u' last tracks:')
             trace_repr(u.last_tracks)
-            TRACE('fetched tracks:')
+            TRACE(u.lastfm_name + u' fetched tracks:')
             trace_repr(tracks)
         elif new < len(tracks) / 2:
             if new > 0:
-                TRACE('adding tracks')
+                TRACE(u.lastfm_name + u' adding tracks')
             u.last_tracks = tracks[:]
             u.newest = tracks[:new] + u.newest
         else:
-            alert('ended up in third branch!')
-            TRACE('last tracks:')
+            alert(u.lastfm_name + u' ended up in third branch!')
+            TRACE(u.lastfm_name + u' last tracks:')
             trace_repr(u.last_tracks)
-            TRACE('fetched tracks:')
+            TRACE(u.lastfm_name + u' fetched tracks:')
             trace_repr(tracks)
 
         on_complete(u)
