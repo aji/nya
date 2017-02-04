@@ -187,10 +187,11 @@ def get_data(url, cb):
 def get_json(url, on_complete):
     def x(d):
         try:
-            on_complete(json.loads(d, 'utf-8'))
+            j = json.loads(d, 'utf-8')
         except ValueError as e:
             alert('json.loads error: ' + repr(e))
             raise e
+        on_complete(j)
     get_data(url, x)
 
 class Track(object):
