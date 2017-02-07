@@ -211,9 +211,9 @@ class Track(object):
         return 'Track({} by {})'.format(repr(self.name), repr(self.artist))
 
     def __eq__(self, other):
-        if self.date is not None and other.date is not None:
-            if self.date != other.date:
-                return False
+        #if self.date is not None and other.date is not None:
+        #    if self.date != other.date:
+        #        return False
 
         if normalize(self.name) != normalize(other.name):
             return False
