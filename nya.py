@@ -231,7 +231,7 @@ class User(object):
         self.lastfm_name  = lastfm_name
         self.buffers      = buffers
 
-        self.announced    = []
+        self.last_tracks  = []
         self.newest       = []
 
     def __repr__(self):
@@ -300,13 +300,13 @@ def do_poll(u, on_complete):
                   repr(u), tracks[u'error'], tracks[u'message']))
             return
 
-        if len(u.announced) == 0:
-            u.announced = tracks[:]
+        if len(u.last_tracks) == 0:
+            u.last_tracks = tracks[:]
             return
 
-        added = [t for op, t in diff(u.announced[:], tracks[:]) if op == '+']
+        added = [t for op, t in diff(u.last_tracks[:], tracks[:]) if op == '+']
         u.newest = added + u.newest
-        u.announced = (added + u.announced)[:50]
+        u.last_tracks = tracks[:]
 
         on_complete(u)
 
