@@ -4,32 +4,32 @@ import traceback
 import json
 import string
 
-# Up at the top.. where I can think...
-#
-# This function answers the question "For what minimal N can I cut off N things
-# from the front of 'new' before the resulting list is contained in or a suffix
-# of 'old' a suffix of 'old'?" The implementation here just brute-forces it,
-# trying increasing values for N until the condition is met.
-#
-# Accepts lists of anything whose equality can be tested with '=='
+def diff(fr, to):
+    def diff_lcs(memo, fr, i, to, j):
+        def lcs():
+            if j == 0:
+                return 0, [('-', x) for x in fr[:i]]
+            if i == 0:
+                return 0, [('+', x) for x in to[:j]]
 
-def prefix_size(new, old):
-    for n in range(len(new)):
-        if is_suffix(new[n:], old):
-            return n
-    return len(new)
+            if fr[i-1] == to[j-1]:
+                n, s = diff_lcs(memo, fr, i-1, to, j-1)
+                return n + 1, s + [(' ', fr[i-1])]
 
-def is_suffix(suffix, container):
-    for i in range(len(container)):
-        no_match = False
-        for j in range(min(len(suffix), len(container) - i)):
-            if suffix[j] != container[i + j]:
-                no_match = True
-                break
-        if no_match:
-            continue
-        return True
-    return False
+            nfr, sfr = diff_lcs(memo, fr, i-1, to, j)
+            nto, sto = diff_lcs(memo, fr, i, to, j-1)
+
+            if nfr >= nto:
+                return nfr, sfr + [('-', fr[i-1])]
+            else:
+                return nto, sto + [('+', to[j-1])]
+
+        if (i, j) not in memo:
+            memo[(i, j)] = lcs()
+        return memo[(i, j)]
+
+    n, s = diff_lcs({}, fr, len(fr), to, len(to))
+    return s
 
 def normalize(word):
     return ''.join(x for x in word.lower() if x not in string.punctuation)
@@ -231,7 +231,7 @@ class User(object):
         self.lastfm_name  = lastfm_name
         self.buffers      = buffers
 
-        self.last_tracks  = []
+        self.announced    = []
         self.newest       = []
 
     def __repr__(self):
@@ -300,52 +300,13 @@ def do_poll(u, on_complete):
                   repr(u), tracks[u'error'], tracks[u'message']))
             return
 
-        if len(u.last_tracks) == 0:
-            u.last_tracks = tracks[:]
-            TRACE(u.lastfm_name + u' tracks initialized to:')
-            for i in range(0, len(u.last_tracks), 3):
-                TRACE(u'   ' + u' '.join(repr(x) for x in u.last_tracks[i:i+3]))
+        if len(u.announced) == 0:
+            u.announced = tracks[:]
             return
 
-        # CASES:
-        #
-        #   1 2 3 4  new=1, old=0
-        #   0 1 2 3  -> track 0 was added
-        #
-        #   1 2 3 1  new=1, old=4
-        #   2 1 2 3  -> track 2 was added
-        #
-        #   1 2 3 4  new=3, old=1
-        #   2 3 4 1  -> track 1 was deleted
-
-        new = prefix_size(tracks[:], u.last_tracks[:])
-        old = prefix_size(u.last_tracks[:], tracks[:])
-        if new != 0 or (old != 0 and old != 1):
-            DEBUG(u.lastfm_name + u' new={} old={}'.format(new, old))
-        if old > new and old < len(tracks) / 2: # something was deleted!
-            TRACE(u.lastfm_name + u' apparent deletion')
-            TRACE(u.lastfm_name + u' last tracks:')
-            trace_repr(u.last_tracks)
-            TRACE(u.lastfm_name + u' fetched tracks:')
-            trace_repr(tracks)
-        elif new < len(tracks) / 2:
-            if new > 0:
-                DEBUG(u.lastfm_name + u' adding tracks')
-            u.last_tracks = tracks[:]
-            u.newest = tracks[:new] + u.newest
-        elif new == len(tracks) and old == len(tracks):
-            alert(u.lastfm_name + u' has a completely new set of tracks!')
-            INFO(u.lastfm_name + u' last tracks:')
-            trace_repr(u.last_tracks, fn=INFO)
-            INFO(u.lastfm_name + u' fetched tracks:')
-            trace_repr(tracks, fn=INFO)
-            u.last_tracks = tracks[:]
-        else:
-            alert(u.lastfm_name + u' ended up in final branch!')
-            TRACE(u.lastfm_name + u' last tracks:')
-            trace_repr(u.last_tracks)
-            TRACE(u.lastfm_name + u' fetched tracks:')
-            trace_repr(tracks)
+        added = [t for op, t in diff(u.announced[:], tracks[:]) if op == '+']
+        u.newest = added + u.newest
+        u.announced = (added + u.announced)[:50]
 
         on_complete(u)
 
