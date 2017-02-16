@@ -304,9 +304,9 @@ def do_poll(u, on_complete):
             u.last_tracks = tracks[:]
             return
 
-        added = [t for op, t in diff(u.last_tracks[:], tracks[:]) if op == '+']
-        u.newest = added + u.newest
-        u.last_tracks = tracks[:]
+        changes = diff(u.last_tracks[:], tracks[:])
+        u.newest = [t for op, t in changes if op == '+'] + u.newest
+        u.last_tracks = [t for op, t in changes if op in ' +'][:30]
 
         on_complete(u)
 
