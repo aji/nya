@@ -1,4 +1,4 @@
-import urllib
+import urllib.parse as UP
 import time
 import traceback
 import json
@@ -33,6 +33,15 @@ def diff(fr, to):
 
 def normalize(word):
     return ''.join(x for x in word.lower() if x not in string.punctuation)
+
+def dedupe(ts):
+    last_t = None
+    res = []
+    for t in ts:
+        if t != last_t:
+            res.append(t)
+            last_t = t
+    return res
 
 CONFPATH = 'nya.json'
 ON_CONF_CHANGED = []
@@ -149,17 +158,21 @@ def lastfm_url(method, **params):
     pre = '?method={}&format={}&api_key={}'.format(method, 'json', LASTFM_API_KEY())
     extra = ''
     if len(params) > 0:
-        extra = '&' + urllib.urlencode(params)
+        extra = '&' + UP.urlencode(params)
     return LASTFM_API_ROOT() + '{}{}'.format(pre, extra)
 
 def youtube_url(method, **params):
     q = { 'key': YOUTUBE_API_KEY() }
     q.update(params)
-    return YOUTUBE_API_ROOT() + method + '?' + urllib.urlencode(q)
+    return YOUTUBE_API_ROOT() + method + '?' + UP.urlencode(q)
 
 def detext(s):
     if s is not None and '#text' in s:
-        return s['#text']
+        s = s['#text']
+    try:
+        s = s.decode('utf-8')
+    except:
+        pass
     return s
 
 URL_REQUEST_TMP = {}
@@ -215,21 +228,23 @@ class Track(object):
         #    if self.date != other.date:
         #        return False
 
-        if normalize(self.name) != normalize(other.name):
+        try:
+            if normalize(self.name) != normalize(other.name):
+                return False
+            if normalize(self.artist) != normalize(other.artist):
+                return False
+            return True
+        except AttributeError:
             return False
-
-        if normalize(self.artist) != normalize(other.artist):
-            return False
-
-        return True
 
     def __ne__(self, other):
         return not (self == other)
 
 class User(object):
-    def __init__(self, lastfm_name, buffers):
+    def __init__(self, lastfm_name, buffers, dedupe):
         self.lastfm_name  = lastfm_name
         self.buffers      = buffers
+        self.dedupe       = dedupe
 
         self.last_tracks  = []
         self.newest       = []
@@ -304,9 +319,20 @@ def do_poll(u, on_complete):
             u.last_tracks = tracks[:]
             return
 
-        changes = diff(u.last_tracks[:], tracks[:])
+        last_tracks = u.last_tracks[:]
+        next_tracks = tracks[:]
+        if u.dedupe:
+            last_tracks = dedupe(last_tracks)
+            next_tracks = dedupe(next_tracks)
+        changes = diff(last_tracks, next_tracks)
         u.newest = [t for op, t in changes if op == '+'] + u.newest
-        u.last_tracks = [t for op, t in changes if op in ' +'][:30]
+        #u.last_tracks = [t for op, t in changes if op in ' +'][:30]
+        u.last_tracks = tracks[:]
+
+        if len(u.newest) != 0:
+            for x, trk in changes:
+                weechat.prnt('', '  {} {}{}'.format(
+                    x, repr(trk), ' (np)' if trk.now_playing else ''))
 
         on_complete(u)
 
@@ -324,14 +350,10 @@ def on_one_fire(data, remaining):
                 .format(
                     u.lastfm_name,
                     'now listening' if t.now_playing else 'listened',
-                    t.name.encode('utf-8'),
-                    t.artist.encode('utf-8'),
+                    t.name,
+                    t.artist,
                     (u'' if vid is None else u': http://youtu.be/{}'
-                        .format(vid)
-                        .encode('utf-8')
-                        )
-                    )
-                )
+                        .format(vid))))
             for b in u.buffers:
                 buf = weechat.info_get('irc_buffer', b)
                 if buf:
@@ -364,8 +386,9 @@ def initialize_users():
         if u['lastfm'] in USERS_BY_LASTFM:
             user = USERS_BY_LASTFM[u['lastfm']]
             user.buffers = u['buffers']
+            user.dedupe = u.get('dedupe',False)
         else:
-            user = User(u['lastfm'], u['buffers'])
+            user = User(u['lastfm'], u['buffers'], u.get('dedupe',False))
         users[user.lastfm_name] = user
     ALL_USERS = list(users.values())
     USERS_BY_LASTFM = users
@@ -400,6 +423,13 @@ def do_unfollow(bufname, user):
         return True
     return False
 
+def do_dedupe(bufname, user):
+    for u in CONF['users']:
+        if u['lastfm'] == user and bufname in u['buffers']:
+            u['dedupe'] = not u.get('dedupe', False)
+            return u['dedupe']
+    return None
+
 def get_following(bufname):
     users = []
     for u in CONF['users']:
@@ -428,6 +458,15 @@ def run_command(net, chan, args):
         else:
             weechat.command(buf, u'/say \0032not following {}'.format(args[1]))
         return
+    if args[0] == 'dedupe':
+        x = do_dedupe(bufname, args[1])
+        if x is None:
+            weechat.command(buf, u'/say \0032not following {}'.format(args[1]))
+        else:
+            conf_changed()
+            save_conf()
+            weechat.command(buf, u'/say \0032{} {}'.format(
+                'deduping' if x else 'no longer deduping', args[1]))
     if args[0] == 'following':
         users = get_following(bufname)
         if len(users) == 0:
